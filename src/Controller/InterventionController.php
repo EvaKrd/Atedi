@@ -10,6 +10,7 @@ use App\Entity\Intervention;
 use App\Form\BillingLineType;
 use App\Form\InterventionType;
 use App\Entity\InterventionReport;
+use App\Entity\Client;
 use App\Repository\ActionRepository;
 use App\Repository\ClientRepository;
 use App\Repository\BookletRepository;
@@ -24,6 +25,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Repository\SoftwareInterventionReportRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\HttpKernel\HttpCache\Esi;
 
 /**
  * @Route("/intervention")
@@ -50,7 +53,7 @@ class InterventionController extends AbstractController
     /**
      * @Route("/new", name="intervention_new", methods={"GET","POST"})
      */
-    public function new(Request $request, ClientRepository $cr, EntityManagerInterface $em): Response
+    public function new(Request $request, ClientRepository $cr, EntityManagerInterface $em, Client $client): Response
     {
         $this->em = $em;
 
@@ -73,6 +76,21 @@ class InterventionController extends AbstractController
             $intervention->setTotalPrice($totalPrice);
             $this->em->persist($intervention);
             $this->em->flush();
+
+            //Créer l'objet HttpClient
+            $httpClient = HttpClient::create();
+
+            //Exécuter la requête
+            $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/login?login=slam2&password=fgCDrvFbWu9ev7');
+
+            //Afficher le code de retour
+            $statusCode = $request->getStatusCode();
+            print($statusCode . "<br/><br/>");
+
+            $last_name = $client->getLastName();
+            //Exécuter la requête
+            $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom=\'$last_name\'&limit=1
+            ');
 
             return $this->redirectToRoute('intervention_show', [
                 'id' => $intervention->getId(),
@@ -118,6 +136,7 @@ class InterventionController extends AbstractController
                             $intervention->setStatus($newStatus);
                             $this->em->persist($intervention);
                             $this->em->flush();
+                            $request = $httpClient->request('GET', 'http://localhost:8001/api/index.php/login?login=demo&password=demodemodemo&reset=0');
                             return $this->redirectToRoute('index');
                         }
                         break;
