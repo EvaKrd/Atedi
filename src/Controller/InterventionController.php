@@ -4,13 +4,13 @@ namespace App\Controller;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use App\Entity\Client;
 use App\Util\AtediHelper;
 use App\Entity\BillingLine;
 use App\Entity\Intervention;
 use App\Form\BillingLineType;
 use App\Form\InterventionType;
 use App\Entity\InterventionReport;
-use App\Entity\Client;
 use App\Repository\ActionRepository;
 use App\Repository\ClientRepository;
 use App\Repository\BookletRepository;
@@ -18,15 +18,16 @@ use App\Repository\SoftwareRepository;
 use App\Repository\TechnicianRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\BillingLineRepository;
+use Doctrine\Persistence\ManagerRegistry;
 use App\Entity\SoftwareInterventionReport;
 use App\Repository\InterventionRepository;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\HttpCache\Esi;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Repository\SoftwareInterventionReportRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Component\HttpKernel\HttpCache\Esi;
 
 /**
  * @Route("/intervention")
@@ -77,20 +78,25 @@ class InterventionController extends AbstractController
             $this->em->persist($intervention);
             $this->em->flush();
 
-            //Créer l'objet HttpClient
-            $httpClient = HttpClient::create();
+            // //Créer l'objet HttpClient
+            // $httpClient = HttpClient::create();
 
-            //Exécuter la requête
-            $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/login?login=slam2&password=fgCDrvFbWu9ev7');
+            // //Exécuter la requête
+            // $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/login?login=slam2&password=fgCDrvFbWu9ev7');
 
-            //Afficher le code de retour
-            $statusCode = $request->getStatusCode();
-            print($statusCode . "<br/><br/>");
+            // //Afficher le code de retour
+            // $statusCode = $request->getStatusCode();
+            // print($statusCode . "<br/><br/>");
 
-            $last_name = $client->getLastName();
-            //Exécuter la requête
-            $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom=\'$last_name\'&limit=1
-            ');
+            // $last_name = $client->getLastName();
+            // $first_name = $client->getFirstName();
+            // //Exécuter la requête
+            // $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom='.$first_name.$last_name.'');
+
+            // //Afficher le code de retour
+            // $statusCode = $request->getStatusCode();
+            // print($statusCode . "<br/><br/>");
+
 
             return $this->redirectToRoute('intervention_show', [
                 'id' => $intervention->getId(),
@@ -106,8 +112,10 @@ class InterventionController extends AbstractController
     /**
      * @Route("/{id}", name="intervention_show", methods={"GET","POST"})
      */
-    public function show(Request $request, Intervention $intervention, EntityManagerInterface $em, SoftwareRepository $sr, ActionRepository $ar, SoftwareInterventionReportRepository $sirr): Response
+    public function show(Request $request, Intervention $intervention, EntityManagerInterface $em, SoftwareRepository $sr, ActionRepository $ar, SoftwareInterventionReportRepository $sirr, $id, ManagerRegistry $doctrine): Response
     {
+        $intervention = $doctrine->getRepository(Intervention::class)->find($id);
+        dump($intervention);
         $this->em = $em;
         $theStatus = $intervention->getStatus();
 
@@ -115,7 +123,6 @@ class InterventionController extends AbstractController
             $newStatus = $request->request->get('status');
 
             if ($theStatus != $newStatus) {
-
                 switch ($newStatus) {
                     case "En attente":
                         $intervention->getInterventionReport()->setStep(1);
@@ -136,7 +143,12 @@ class InterventionController extends AbstractController
                             $intervention->setStatus($newStatus);
                             $this->em->persist($intervention);
                             $this->em->flush();
-                            $request = $httpClient->request('GET', 'http://localhost:8001/api/index.php/login?login=demo&password=demodemodemo&reset=0');
+                            // Récupération de l'ID à partir de l'URL
+                            // $intervention = $request->attributes->get('id');
+
+                             // Utilisation de l'ID pour récupérer l'article correspondant
+                            // $intervention = $this->$doctrine->getRepository(Intervention::class)->find($id);
+
                             return $this->redirectToRoute('index');
                         }
                         break;
