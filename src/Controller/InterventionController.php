@@ -97,9 +97,9 @@ class InterventionController extends AbstractController
             // $statusCode = $request->getStatusCode();
             // print($statusCode . "<br/><br/>");
 
-
+            $id =  $intervention->getId();
             return $this->redirectToRoute('intervention_show', [
-                'id' => $intervention->getId(),
+                'id' => $id,
             ]);
         }
 
@@ -151,37 +151,44 @@ class InterventionController extends AbstractController
                             // Stockage de l'ID dans une variable
                             $interventionId = $intervention->getId();
 
-                            $requete = "SELECT tbl_intervention.client_id WHERE tbl_intervention.id = $interventionId";
-                            $query = $this->$doctrine->getManager()->createQuery($requete);
-                            $query->setParameter('interventionId', $interventionId);
-                            $clientId = $query->getSingleScalarResult();
+                            // $requete = "SELECT tbl_intervention.client_id WHERE tbl_intervention.id = $interventionId";
+                            // $query = $this->$doctrine->getManager()->createQuery($requete);
+                            // $query->setParameter('interventionId', $interventionId);
+                            // $clientId = $query->getSingleScalarResult();
+                            $clientId = $intervention->getClient()->getId();
+                            dump($clientId);
 
-                            $requete = "SELECT tbl_client.firstname, tbl_client.lastname WHERE tbl_client.id = $clientId";
-                            $query = $this->$doctrine->getManager()->createQuery($requete);
-                            $query->setParameter('interventionId', $interventionId);
-                            $clientName = $query->getSingleScalarResult();
+                            // $requete = "SELECT tbl_client.firstname, tbl_client.lastname WHERE tbl_client.id = $clientId";
+                            // $query = $this->$doctrine->getManager()->createQuery($requete);
+                            // $query->setParameter('interventionId', $interventionId);
+                            // $clientName = $query->getSingleScalarResult();
+                            $clientFirstName = $intervention->getClient()->getFirstName();
+                            $clientLastName = $intervention->getClient()->getLastName();
 
                             // //Créer l'objet HttpClient
                             $httpClient = HttpClient::create();
 
                             // //Exécuter la requête
-                            $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom='.$clientName);
+                            $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom='.$clientFirstName.$clientLastName);
 
                             //Vérifier la réponse de la requête
                             if ($request->getStatusCode() == 200) {
                                 $response = json_decode($request->getContent(), true);
+                                dump($response);
+                            }
     
                             //Vérifier si un client correspondant a été trouvé
                             if (!empty($response)) {
-                            //Récupérer les informations sur le client
-                            $clientId = $response[0]['id'];
+                                //Récupérer les informations sur le client
+                                $clientId = $response[0]['id'];
 
-                            //Utiliser les informations du client
-                            //...
+                                //Créer une facture pour le client trouvé
+                                //.
+                                dump($response);
                             } else {
                             //Exécuter une autre requête API pour créer le client
                             $clientData = array(
-                                'name' => $clientName,
+                                'name' => $clientFirstName.$clientLastName,
                                 //Ajouter d'autres informations sur le client si nécessaire
                             );
                             $request = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
@@ -194,50 +201,25 @@ class InterventionController extends AbstractController
                             //Traiter la réponse de la requête de création de client
                             if ($request->getStatusCode() == 201) {
                             $response = json_decode($request->getContent(), true);
+
+                            dump($response);
                             $clientId = $response['id'];
 
                             //Utiliser les informations du nouveau client
                             //...
                             } else {
                             //Gérer l'erreur en cas de problème avec la création de client
-                            //...
+                            $request->getStatusCode();
                             }
                         }
                     } else {
                     //Gérer l'erreur en cas de problème avec la requête API
                     //...
                     }
-                            print_r($interventionId);
 
-                            return $this->redirectToRoute('index');
-                        }
-                        $apiUrl = 'htps://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?';
-                        $apiKey = 'DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3';
-
-                        $customer_name = "Acme Inc";
-
-                        $clientSearch = json_decode(CallAPI("GET", $apiKey, $apiUrl."thirdparties", array(
-                            "sortfield" => "t.rowid", 
-                            "sortorder" => "ASC", 
-                            "limit" => "1", 
-                            "mode" => "1",
-                            "sqlfilters" => "(t.nom:=:'".$customer_name."')"
-                            )
-                        ), true);
-
-                        $newClient = [
-                            "name"             => "customer company name",
-                            "email"            => "customer company email",
-                            "client"         => "1",
-                            "code_client"    => "-1"
-                        ];
-                        $newClientResult = CallAPI("POST", $apiKey, $apiUrl."thirdparties", json_encode($newClient));
-                        $newClientResult = json_decode($newClientResult, true);
-                        $clientDoliId = $newClientResult;
-                    }
+                    // return $this->redirectToRoute('index');
                     break;
                 }
-        
                 $this->em->persist($intervention);
                 $this->em->flush();
             }
