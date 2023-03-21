@@ -54,7 +54,7 @@ class InterventionController extends AbstractController
     /**
      * @Route("/new", name="intervention_new", methods={"GET","POST"})
      */
-    public function new(Request $request, ClientRepository $cr, EntityManagerInterface $em, Client $client): Response
+    public function new(Request $request, ClientRepository $cr, EntityManagerInterface $em): Response
     {
         $this->em = $em;
 
@@ -78,26 +78,6 @@ class InterventionController extends AbstractController
             $this->em->persist($intervention);
             $this->em->flush();
 
-            // //Créer l'objet HttpClient
-            // $httpClient = HttpClient::create();
-
-            // //Exécuter la requête
-            // $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/login?login=slam2&password=fgCDrvFbWu9ev7');
-
-            // //Afficher le code de retour
-            // $statusCode = $request->getStatusCode();
-            // print($statusCode . "<br/><br/>");
-
-            // $last_name = $client->getLastName();
-            // $first_name = $client->getFirstName();
-            // //Exécuter la requête
-            // $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom='.$first_name.$last_name.'');
-
-            // //Afficher le code de retour
-            // $statusCode = $request->getStatusCode();
-            // print($statusCode . "<br/><br/>");
-
-            $id =  $intervention->getId();
             return $this->redirectToRoute('intervention_show', [
                 'id' => $id,
             ]);
@@ -162,16 +142,12 @@ class InterventionController extends AbstractController
                             // //Exécuter la requête
                             $httpResponse = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom=' . $clientFirstName . ' ' . $clientLastName);
 
-                            dump("1");
                             dump($httpResponse->getStatusCode());
-                            dump("2");
 
                             //Vérifier la réponse de la requête
                             if ($httpResponse->getStatusCode() == 200) {
                                 $httpResponseContent = json_decode($httpResponse->getContent(), true);
-                                dump("3");
                                 dump($httpResponseContent);
-                                dump("4");
                             }
 
                             //Vérifier si un client correspondant a été trouvé
@@ -180,10 +156,8 @@ class InterventionController extends AbstractController
                                 $clientId = $httpResponseContent[0]['id'];
 
                                 //Créer une facture pour le client trouvé
-                                dump("5");
-                                dump($httpResponseContent);
-                                dump("6");
 
+                                $prix = $intervention->getTotalPrice();
                                 $factureData = array(
                                     'brouillon' => 1,
                                     'socid' => $clientId,
@@ -191,10 +165,7 @@ class InterventionController extends AbstractController
                                     'date' => 1667948400,
                                     'date_livraison' => null,
                                     'ligne' => [
-                                        'subprice' => 250.0,
-                                        'qty' => 1,
-                                        'tva_tx' => 20.0,
-                                        'fx_product' => 1,
+                                        'total_ttc' => $prix
                                     ]
                                 );
                                 $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
@@ -223,9 +194,7 @@ class InterventionController extends AbstractController
                                     $response = json_decode($httpResponse->getContent(), true);
 
                                     //Utiliser les informations du nouveau client
-                                    dump("7");
-                                    dump($response);
-                                    dump("8");
+                                    $prix = $intervention->getTotalPrice();
                                     $clientId = $response;
                                     $factureData = array(
                                         'brouillon' => 1,
@@ -234,10 +203,7 @@ class InterventionController extends AbstractController
                                         'date' => 1667948400,
                                         'date_livraison' => null,
                                         'ligne' => [
-                                            'subprice' => 250.0,
-                                            'qty' => 1,
-                                            'tva_tx' => 20.0,
-                                            'fx_product' => 1,
+                                            'total_ttc' => $prix
                                         ]
                                     );
                                     $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
