@@ -127,98 +127,138 @@ class InterventionController extends AbstractController
                         $intervention->getInterventionReport()->setStep(1);
                         $intervention->setStatus($newStatus);
                         $intervention->setReturnDate(null);
-                    break;
+                        break;
 
                     case "En cours":
                         $intervention->getInterventionReport()->setStep(1);
                         $intervention->setStatus($newStatus);
-                        if ( $theStatus == "Terminée" ) {
+                        if ($theStatus == "Terminée") {
                             $intervention->setReturnDate(null);
                         }
-                    break;
+                        break;
 
                     case "Terminée":
-                        if ( $intervention->getInterventionReport()->getStep() == 8 && $intervention->getReturnDate() ) {
+                        if ($intervention->getInterventionReport()->getStep() == 8 && $intervention->getReturnDate()) {
                             $intervention->setStatus($newStatus);
                             $this->em->persist($intervention);
                             $this->em->flush();
-                            // Récupération de l'ID à partir de l'URL
-                            // $intervention = $request->query->get("id");
+                            
+                            // Récupération de l'intervention via l'ID
+                            // $intervention = $doctrine->getRepository(Intervention::class)->find($id);
 
-                             // Récupération de l'intervention via l'ID
-                            $intervention = $doctrine->getRepository(Intervention::class)->find($id);
-    
                             // Stockage de l'ID dans une variable
                             $interventionId = $intervention->getId();
 
-                            // $requete = "SELECT tbl_intervention.client_id WHERE tbl_intervention.id = $interventionId";
-                            // $query = $this->$doctrine->getManager()->createQuery($requete);
-                            // $query->setParameter('interventionId', $interventionId);
-                            // $clientId = $query->getSingleScalarResult();
-                            $clientId = $intervention->getClient()->getId();
-                            dump($clientId);
+                            $clientId = $intervention->getClient()->getId(); //fonctionne avec un dump
 
-                            // $requete = "SELECT tbl_client.firstname, tbl_client.lastname WHERE tbl_client.id = $clientId";
-                            // $query = $this->$doctrine->getManager()->createQuery($requete);
-                            // $query->setParameter('interventionId', $interventionId);
-                            // $clientName = $query->getSingleScalarResult();
+                           
                             $clientFirstName = $intervention->getClient()->getFirstName();
                             $clientLastName = $intervention->getClient()->getLastName();
+                            // dump($clientFirstName, $clientLastName);
 
                             // //Créer l'objet HttpClient
                             $httpClient = HttpClient::create();
 
                             // //Exécuter la requête
-                            $request = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom='.$clientFirstName.$clientLastName);
+                            $httpResponse = $httpClient->request('GET', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3&sqlfilters=t.nom=' . $clientFirstName . ' ' . $clientLastName);
+
+                            dump("1");
+                            dump($httpResponse->getStatusCode());
+                            dump("2");
 
                             //Vérifier la réponse de la requête
-                            if ($request->getStatusCode() == 200) {
-                                $response = json_decode($request->getContent(), true);
-                                dump($response);
+                            if ($httpResponse->getStatusCode() == 200) {
+                                $httpResponseContent = json_decode($httpResponse->getContent(), true);
+                                dump("3");
+                                dump($httpResponseContent);
+                                dump("4");
                             }
-    
+
                             //Vérifier si un client correspondant a été trouvé
-                            if (!empty($response)) {
+                            if (!empty($httpResponseContent)) {
                                 //Récupérer les informations sur le client
-                                $clientId = $response[0]['id'];
+                                $clientId = $httpResponseContent[0]['id'];
 
                                 //Créer une facture pour le client trouvé
-                                //.
-                                dump($response);
+                                dump("5");
+                                dump($httpResponseContent);
+                                dump("6");
+
+                                $factureData = array(
+                                    'brouillon' => 1,
+                                    'socid' => $clientId,
+                                    'fk_user_author' => 1,
+                                    'date' => 1667948400,
+                                    'date_livraison' => null,
+                                    'ligne' => [
+                                        'subprice' => 250.0,
+                                        'qty' => 1,
+                                        'tva_tx' => 20.0,
+                                        'fx_product' => 1,
+                                    ]
+                                );
+                                $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
+                                    'headers' => [
+                                        'Content-Type' => 'application/json'
+                                    ],
+                                    'body' => json_encode($factureData)
+                                ]);
                             } else {
-                            //Exécuter une autre requête API pour créer le client
-                            $clientData = array(
-                                'name' => $clientFirstName.$clientLastName,
-                                //Ajouter d'autres informations sur le client si nécessaire
-                            );
-                            $request = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
-                                'headers' => [
-                                'Content-Type' => 'application/json'
-                                ],
-                                'body' => json_encode($clientData)
-                            ]);
+                                //Exécuter une autre requête API pour créer le client
+                                $clientData = array(
+                                    'client' => 1,
+                                    'code_client' => -1,
+                                    'name' => $clientFirstName .' '.$clientLastName
+                                );
+                                $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/thirdparties?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
+                                    'headers' => [
+                                        'Content-Type' => 'application/json'
+                                    ],
+                                    'body' => json_encode($clientData)
+                                ]);
+                                 dump($httpResponse->getStatusCode());
 
-                            //Traiter la réponse de la requête de création de client
-                            if ($request->getStatusCode() == 201) {
-                            $response = json_decode($request->getContent(), true);
+                                //Traiter la réponse de la requête de création de client
+                                if ($httpResponse->getStatusCode() == 200) {
+                                    $response = json_decode($httpResponse->getContent(), true);
 
-                            dump($response);
-                            $clientId = $response['id'];
+                                    //Utiliser les informations du nouveau client
+                                    dump("7");
+                                    dump($response);
+                                    dump("8");
+                                    $clientId = $response;
+                                    $factureData = array(
+                                        'brouillon' => 1,
+                                        'socid' => $clientId,
+                                        'fk_user_author' => 1,
+                                        'date' => 1667948400,
+                                        'date_livraison' => null,
+                                        'ligne' => [
+                                            'subprice' => 250.0,
+                                            'qty' => 1,
+                                            'tva_tx' => 20.0,
+                                            'fx_product' => 1,
+                                        ]
+                                    );
+                                    $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
+                                        'headers' => [
+                                            'Content-Type' => 'application/json'
+                                        ],
+                                        'body' => json_encode($factureData)
+                                    ]);
 
-                            //Utiliser les informations du nouveau client
-                            //...
-                            } else {
-                            //Gérer l'erreur en cas de problème avec la création de client
-                            $request->getStatusCode();
+                                } else {
+                                    //Gérer l'erreur en cas de problème avec la création de client
+                                    dump($httpResponse->getStatusCode());
+                                }
                             }
+                        } else {
+                            //Gérer l'erreur en cas de problème avec la requête API
+                            //...
                         }
-                    } else {
-                    //Gérer l'erreur en cas de problème avec la requête API
-                    //...
-                    }
 
-                    // return $this->redirectToRoute('index');
-                    break;
+                        // return $this->redirectToRoute('index');
+                        break;
                 }
                 $this->em->persist($intervention);
                 $this->em->flush();
@@ -265,7 +305,7 @@ class InterventionController extends AbstractController
                     // Render the HTML as PDF
                     $dompdf->render();
 
-                    $pdfName = $intervention->getClient()->getLastName().'-DEMANDE-'.time().'.pdf';
+                    $pdfName = $intervention->getClient()->getLastName() . '-DEMANDE-' . time() . '.pdf';
                     // Output the generated PDF to Browser (force download)
                     $dompdf->stream($pdfName, [
                         "Attachment" => true
@@ -304,7 +344,7 @@ class InterventionController extends AbstractController
                     // Render the HTML as PDF
                     $dompdf->render();
 
-                    $pdfName = $intervention->getClient()->getLastName().'-RAPPORT-'.time().'.pdf';
+                    $pdfName = $intervention->getClient()->getLastName() . '-RAPPORT-' . time() . '.pdf';
                     // Output the generated PDF to Browser (force download)
                     $dompdf->stream($pdfName, [
                         "Attachment" => true
@@ -327,44 +367,44 @@ class InterventionController extends AbstractController
 
         $interventionReport = $intervention->getInterventionReport();
         $step = $interventionReport->getStep();
-        
+
         if ($request->query->has('step')) {
 
             $setup = $request->query->get('step');
 
             switch ($setup) {
                 case "next":
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
-        
+
                     return $this->redirectToRoute('intervention_report', [
                         'id' => $intervention->getId(),
                     ]);
                     break;
 
                 case "previous":
-                    $interventionReport->setStep($step-1);
+                    $interventionReport->setStep($step - 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
-        
+
                     return $this->redirectToRoute('intervention_report', [
                         'id' => $intervention->getId(),
                     ]);
                     break;
-                
+
                 case "restart":
                     $interventionReport->setStep(1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
-        
+
                     return $this->redirectToRoute('intervention_report', [
                         'id' => $intervention->getId(),
                     ]);
                     break;
             }
-        } 
-            
+        }
+
         $softwares = [];
         $booklets = $br->findAll();
         $actions = $ar->findAll();
@@ -376,7 +416,7 @@ class InterventionController extends AbstractController
         switch ($step) {
             case 1:
                 $irTechnicians = $interventionReport->getTechnicians();
-                foreach ( $irTechnicians as $irTechnician ) {
+                foreach ($irTechnicians as $irTechnician) {
                     $interventionReport->removeTechnician($irTechnician);
                 }
                 $this->em->flush();
@@ -386,14 +426,14 @@ class InterventionController extends AbstractController
                     if ($request->request->has('technicians')) {
                         $technicians = $request->request->get('technicians');
 
-                        foreach ( $technicians as $technician ) {
+                        foreach ($technicians as $technician) {
                             $technician = $tr->findOneById($technician);
                             $interventionReport->addTechnician($technician);
                             $this->em->persist($interventionReport);
                         }
                     }
 
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
 
@@ -405,8 +445,8 @@ class InterventionController extends AbstractController
 
             case 2:
                 $intervention->getInterventionReport()->setSeverityProblem([]);
-                $irSoftwares = $sirr->findAllByReportAndAction($interventionReport->getId(),"Nettoyage");
-                foreach ( $irSoftwares as $ele ) {
+                $irSoftwares = $sirr->findAllByReportAndAction($interventionReport->getId(), "Nettoyage");
+                foreach ($irSoftwares as $ele) {
                     $this->em->remove($ele);
                 }
                 $interventionReport->setInternalAnalysis(NULL);
@@ -419,8 +459,8 @@ class InterventionController extends AbstractController
                     if ($request->request->has('cleaning-software')) {
 
                         $cleaningSoftwares = $request->request->get('cleaning-software');
-                        foreach ( $cleaningSoftwares as $softwareId ) {
-                        
+                        foreach ($cleaningSoftwares as $softwareId) {
+
                             $software = $sr->findOneById($softwareId);
                             $softwareOperation = new SoftwareInterventionReport();
                             $softwareOperation->setSoftware($software);
@@ -439,10 +479,10 @@ class InterventionController extends AbstractController
                         $internalAnalysis = $request->request->get('internal-analysis');
                         $interventionReport->setInternalAnalysis($internalAnalysis);
                     }
-                    
+
                     $severity = $request->request->get('severity');
                     $interventionReport->setSeverity($severity);
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
 
@@ -454,7 +494,7 @@ class InterventionController extends AbstractController
 
             case 3:
                 $irActions = $interventionReport->getActions();
-                foreach ( $irActions as $irAction ) {
+                foreach ($irActions as $irAction) {
                     $interventionReport->removeAction($irAction);
                 }
                 $this->em->flush();
@@ -464,14 +504,14 @@ class InterventionController extends AbstractController
                     if ($request->request->has('actions')) {
                         $actions = $request->request->get('actions');
 
-                        foreach ( $actions as $action ) {
+                        foreach ($actions as $action) {
                             $action = $ar->findOneById($action);
                             $interventionReport->addAction($action);
                             $this->em->persist($interventionReport);
                         }
                     }
 
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
 
@@ -482,12 +522,12 @@ class InterventionController extends AbstractController
                 break;
 
             case 4:
-                $irSoftwares = $sirr->findAllByReportAndAction($interventionReport->getId(),"Installé");
-                foreach ( $irSoftwares as $ele ) {
+                $irSoftwares = $sirr->findAllByReportAndAction($interventionReport->getId(), "Installé");
+                foreach ($irSoftwares as $ele) {
                     $this->em->remove($ele);
                 }
-                $irSoftwares = $sirr->findAllByReportAndAction($interventionReport->getId(),"Mis à jour");
-                foreach ( $irSoftwares as $ele ) {
+                $irSoftwares = $sirr->findAllByReportAndAction($interventionReport->getId(), "Mis à jour");
+                foreach ($irSoftwares as $ele) {
                     $this->em->remove($ele);
                 }
                 $this->em->flush();
@@ -499,12 +539,12 @@ class InterventionController extends AbstractController
                     $parametersList = $request->request->all();
                     $parametersLength = count($parametersList);
 
-                    $parametersList = array_slice($parametersList, 0, $parametersLength-1, true);
+                    $parametersList = array_slice($parametersList, 0, $parametersLength - 1, true);
                     $parametersList = array_slice($parametersList, 1, $parametersLength, true);
                     $parametersLength = count($parametersList);
 
                     $parametersKeys = array_keys($parametersList);
-                    
+
                     for ($i = 0; $i < $parametersLength; $i++) {
                         $parameter = explode("-", $parametersKeys[$i]);
                         $softwareId = $parameter[1];
@@ -518,7 +558,7 @@ class InterventionController extends AbstractController
                         $this->em->persist($softwareOperation);
                     }
 
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
 
@@ -545,7 +585,7 @@ class InterventionController extends AbstractController
                         $interventionReport->setWindowsVersion($windowsVersion);
                     }
 
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
 
@@ -557,7 +597,7 @@ class InterventionController extends AbstractController
 
             case 6:
                 $irBooklets = $interventionReport->getBooklets();
-                foreach ( $irBooklets as $irBooklet ) {
+                foreach ($irBooklets as $irBooklet) {
                     $interventionReport->removeBooklet($irBooklet);
                 }
                 $this->em->flush();
@@ -567,13 +607,13 @@ class InterventionController extends AbstractController
                     if ($request->request->has('booklets')) {
                         $booklets = $request->request->get('booklets');
 
-                        foreach ( $booklets as $booklet ) {
+                        foreach ($booklets as $booklet) {
                             $booklet = $br->findOneById($booklet);
                             $interventionReport->addBooklet($booklet);
                             $this->em->persist($interventionReport);
                         }
                     }
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
 
@@ -593,7 +633,7 @@ class InterventionController extends AbstractController
 
                         $interventionReport->setComment($comment);
                     }
-                    $interventionReport->setStep($step+1);
+                    $interventionReport->setStep($step + 1);
                     $this->em->persist($interventionReport);
                     $this->em->flush();
 
@@ -602,7 +642,7 @@ class InterventionController extends AbstractController
                     ]);
                 }
                 break;
-            
+
             case 8:
                 if ($request->request->has('delete-billing-line')) {
                     $billingLineId = $request->request->get('billing-line-id');
@@ -620,11 +660,11 @@ class InterventionController extends AbstractController
                         'id' => $intervention->getId(),
                     ]);
                 }
-                
+
                 if ($billingLineForm->isSubmitted() && $billingLineForm->isValid()) {
 
                     $this->em = $em;
-        
+
                     $billingLine->setIntervention($intervention);
                     $this->em->persist($billingLine);
                     $this->em->flush();
@@ -682,10 +722,10 @@ class InterventionController extends AbstractController
      */
     public function delete(Request $request, EntityManagerInterface $em, Intervention $intervention, BillingLineRepository $blr): Response
     {
-        if ($this->isCsrfTokenValid('delete'.$intervention->getId(), $request->request->get('_token'))) {
+        if ($this->isCsrfTokenValid('delete' . $intervention->getId(), $request->request->get('_token'))) {
 
             $billingLines = $blr->findAllByIntervention($intervention);
-            
+
             foreach ($billingLines as $billingLine) {
                 $em->remove($billingLine);
             }
