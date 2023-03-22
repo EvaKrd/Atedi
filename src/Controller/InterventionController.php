@@ -156,13 +156,16 @@ class InterventionController extends AbstractController
                                 $clientId = $httpResponseContent[0]['id'];
 
                                 //Créer une facture pour le client trouvé
-
+                                $date = new \DateTime();
+                                $epoch_time = $date->getTimestamp();
                                 $prix = $intervention->getTotalPrice();
+                                dump($prix);
+
                                 $factureData = array(
                                     'brouillon' => 1,
                                     'socid' => $clientId,
                                     'fk_user_author' => 1,
-                                    'date' => 1667948400,
+                                    'date' => $epoch_time,
                                     'date_livraison' => null,
                                     'ligne' => [
                                         'total_ttc' => $prix
@@ -195,12 +198,15 @@ class InterventionController extends AbstractController
 
                                     //Utiliser les informations du nouveau client
                                     $prix = $intervention->getTotalPrice();
+                                    $date = new \DateTime();
+                                    $epoch_time = $date->getTimestamp();
+                                    dump($prix);
                                     $clientId = $response;
                                     $factureData = array(
                                         'brouillon' => 1,
                                         'socid' => $clientId,
                                         'fk_user_author' => 1,
-                                        'date' => 1667948400,
+                                        'date' => $epoch_time,
                                         'date_livraison' => null,
                                         'ligne' => [
                                             'total_ttc' => $prix
