@@ -158,8 +158,17 @@ class InterventionController extends AbstractController
                                 //Créer une facture pour le client trouvé
                                 $date = new \DateTime();
                                 $epoch_time = $date->getTimestamp();
+
                                 $prix = $intervention->getTotalPrice();
-                                dump($prix);
+                                $prix_ttc = (int)$prix;
+                                $tva = 20;
+                                $coeff = 1 + ($tva/100);
+                                $prix2 = $prix_ttc/$coeff;
+                                $prix_ht = (int)$prix2;
+                                dump($prix_ttc);
+                                dump($prix_ht);
+                                dump($tva);
+
 
                                 $factureData = array(
                                     'brouillon' => 1,
@@ -168,9 +177,21 @@ class InterventionController extends AbstractController
                                     'date' => $epoch_time,
                                     'date_livraison' => null,
                                     'ligne' => [
-                                        'total_ttc' => $prix
+                                        'total_ht' => $prix_ht,
+                                        'total_tva' => $tva,
+                                        'total_ttc' => $prix_ttc
                                     ]
                                 );
+                                // $factureData = array(
+                                //     'brouillon' => 1,
+                                //     'socid' => $clientId,
+                                //     'fk_user_author' => 1,
+                                //     'date' => $epoch_time,
+                                //     'date_livraison' => null,
+                                //     'total_ht' => $prix_ht,
+                                //     'total_tva' => $tva,
+                                //     'total_ttc' => $prix_ttc
+                                // );
                                 $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
                                     'headers' => [
                                         'Content-Type' => 'application/json'
@@ -198,9 +219,20 @@ class InterventionController extends AbstractController
 
                                     //Utiliser les informations du nouveau client
                                     $prix = $intervention->getTotalPrice();
+                                    // $formatted_prix = sprintf('%.8E', $prix);
+                                    // dump($formatted_prix);
                                     $date = new \DateTime();
                                     $epoch_time = $date->getTimestamp();
-                                    dump($prix);
+                                    $prix = $intervention->getTotalPrice();
+                                    $prix_ttc = (int)$prix;
+                                    $tva = 20;
+                                    $coeff = 1 + ($tva/100);
+                                    $prix2 = $prix_ttc/$coeff;
+                                    $prix_ht = (int)$prix2;
+                                    dump($prix_ttc);
+                                    dump($prix_ht);
+                                    dump($tva);
+                                    // dump($prix);
                                     $clientId = $response;
                                     $factureData = array(
                                         'brouillon' => 1,
@@ -209,7 +241,9 @@ class InterventionController extends AbstractController
                                         'date' => $epoch_time,
                                         'date_livraison' => null,
                                         'ligne' => [
-                                            'total_ttc' => $prix
+                                            'total_ht' => $prix_ht,
+                                            'total_tva' => $tva,
+                                            'total_ttc' => $prix_ttc
                                         ]
                                     );
                                     $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
