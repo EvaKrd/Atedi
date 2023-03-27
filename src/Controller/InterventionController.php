@@ -20,6 +20,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\BillingLineRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use App\Entity\SoftwareInterventionReport;
+use App\Entity\Task;
 use App\Repository\InterventionRepository;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\HttpFoundation\Request;
@@ -79,7 +80,7 @@ class InterventionController extends AbstractController
             $this->em->flush();
 
             return $this->redirectToRoute('intervention_show', [
-                'id' => $id,
+                'id' => $intervention->getId(),
             ]);
         }
 
@@ -160,14 +161,22 @@ class InterventionController extends AbstractController
                                 $epoch_time = $date->getTimestamp();
 
                                 $prix = $intervention->getTotalPrice();
-                                $prix_ttc = (int)$prix;
-                                $tva = 20;
+                                $price = (int)$prix;
+                                $tva = 20.0;
                                 $coeff = 1 + ($tva/100);
+                                $prix_ttc =  $prix*$tva;
                                 $prix2 = $prix_ttc/$coeff;
                                 $prix_ht = (int)$prix2;
+                                $total_tva = $prix_ht*$tva;
+                                $comment = $intervention->getComment();
+                                $desc = $comment;
+                                $product = Task->getId();
+                                $fk_product = (int)$product;
                                 dump($prix_ttc);
                                 dump($prix_ht);
                                 dump($tva);
+                                dump($price);
+                                dump($total_tva);
 
 
                                 $factureData = array(
@@ -176,10 +185,21 @@ class InterventionController extends AbstractController
                                     'fk_user_author' => 1,
                                     'date' => $epoch_time,
                                     'date_livraison' => null,
-                                    'ligne' => [
+                                    'total_ht' => $prix_ht,
+                                    'total_tva' =>  $total_tva,
+                                    'total_ttc' => $prix_ttc,
+                                    'qty' => 1,
+                                    'type' => 0,
+                                    'note_private' => 'Facture créée automatiquement avec Atedi',
+                                    'lines' => [
+                                        'price' => $price,
                                         'total_ht' => $prix_ht,
-                                        'total_tva' => $tva,
-                                        'total_ttc' => $prix_ttc
+                                        'total_tva' => $total_tva,
+                                        'total_ttc' => $prix_ttc,
+                                        'tva_tx'=> $tva,
+                                        'subprice' => $prix_ht,
+                                        'desc' => $desc,
+                                        'fk_product' => $fk_product
                                     ]
                                 );
                                 // $factureData = array(
@@ -216,34 +236,51 @@ class InterventionController extends AbstractController
                                 //Traiter la réponse de la requête de création de client
                                 if ($httpResponse->getStatusCode() == 200) {
                                     $response = json_decode($httpResponse->getContent(), true);
-
-                                    //Utiliser les informations du nouveau client
-                                    $prix = $intervention->getTotalPrice();
                                     // $formatted_prix = sprintf('%.8E', $prix);
                                     // dump($formatted_prix);
                                     $date = new \DateTime();
                                     $epoch_time = $date->getTimestamp();
+
                                     $prix = $intervention->getTotalPrice();
-                                    $prix_ttc = (int)$prix;
-                                    $tva = 20;
+                                    $price = (int)$prix;
+                                    $tva = 20.0;
                                     $coeff = 1 + ($tva/100);
+                                    $prix_ttc =  $prix*$tva;
                                     $prix2 = $prix_ttc/$coeff;
                                     $prix_ht = (int)$prix2;
+                                    $total_tva = $prix_ht*$tva;
+                                    $comment = $intervention->getComment();
+                                    $desc = $comment;
+                                    $product = Task->getId();
+                                    $fk_product = (int)$product;
                                     dump($prix_ttc);
                                     dump($prix_ht);
                                     dump($tva);
-                                    // dump($prix);
-                                    $clientId = $response;
+                                    dump($price);
+                                    dump($total_tva);
+    
+    
                                     $factureData = array(
                                         'brouillon' => 1,
                                         'socid' => $clientId,
                                         'fk_user_author' => 1,
                                         'date' => $epoch_time,
                                         'date_livraison' => null,
-                                        'ligne' => [
+                                        'total_ht' => $prix_ht,
+                                        'total_tva' =>  $total_tva,
+                                        'total_ttc' => $prix_ttc,
+                                        'qty' => 1,
+                                        'type' => 0,
+                                        'note_private' => 'Facture créée automatiquement avec Atedi',
+                                        'lines' => [
+                                            'price' => $price,
                                             'total_ht' => $prix_ht,
-                                            'total_tva' => $tva,
-                                            'total_ttc' => $prix_ttc
+                                            'total_tva' => $total_tva,
+                                            'total_ttc' => $prix_ttc,
+                                            'tva_tx'=> $tva,
+                                            'subprice' => $prix_ht,
+                                            'desc' => $desc,
+                                            'fk_product' => $fk_product
                                         ]
                                     );
                                     $httpResponse = $httpClient->request('POST', 'https://lbouquet.doli.sio-ndlp.fr/api/index.php/invoices?DOLAPIKEY=8n8O4975Miz06XpO6HAKdfmOJQpkjSz3', [
